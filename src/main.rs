@@ -1,12 +1,12 @@
 use std::io::{self, stdout, Read};
 use termion::raw::IntoRawMode;
+
+mod editor;
+use editor::Editor;
+mod terminal;
+use terminal::Terminal;
+
 fn main() {
-    let _stdout = stdout().into_raw_mode().unwrap();
-    for b in io::stdin().bytes() {
-        let c = b.unwrap() as char;
-        println!("{}", c);
-        if c == 'q' {
-            break;
-        }
-    }
+    print!("\x1b[2J");
+    Editor::default().run();
 }
