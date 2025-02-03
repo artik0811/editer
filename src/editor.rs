@@ -9,6 +9,8 @@ use std::path::Display;
 
 use crate::terminal::{Position, Size, Terminal};
 
+const NAME: &str = "Editer";
+const VER: &str = "0.0.1";
 pub struct Editor {
     should_exit: bool,
 }
@@ -78,11 +80,31 @@ impl Editor {
         let Size{height, ..} = Terminal::size()?;
         for current_row in 0..height {
             Terminal::clear_screen(crossterm::terminal::ClearType::CurrentLine)?;
-            Terminal::print("~")?;
+            if current_row == height / 2 {
+                Self::print_welcome_message()?;
+            } else {
+                Self::print_empty_row()?;
+            }
             if current_row + 1 < height {
                 Terminal::print("\r\n")?;
             }
         }
         Ok(())
+    }
+
+    fn print_empty_row() -> Result<(), Error> {
+        Terminal::print("~")?;
+        Ok(())
+    }
+
+    fn print_welcome_message() -> Result<(), Error> {
+        let mut msg = format!("{NAME} -- verison {VER}");
+        let width = Terminal::size()?.width as usize;
+        let len = msg.len();
+        let padding = (width - len) / 2;
+        let spaces = " ".repeat(padding - 1);
+        msg = format!("~{spaces}{msg}");
+        msg.truncate(width);
+        Terminal::print(msg)
     }
 }
