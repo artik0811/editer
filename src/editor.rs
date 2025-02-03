@@ -7,20 +7,16 @@ use termion::color::Reset;
 use std::io::{self, stdout, Error};
 use std::path::Display;
 
-use crate::terminal::Terminal;
+use crate::terminal::{Position, Size, Terminal};
 
 pub struct Editor {
     should_exit: bool,
-    current_x: u16,
-    current_y: u16,
 }
 
 impl Editor {
     pub const fn default() -> Self {
         Self {
             should_exit: false,
-            current_x: 0,
-            current_y: 0,
         }
     }
 
@@ -31,7 +27,7 @@ impl Editor {
         result.unwrap();
     } 
 
-    fn repl (&mut self) -> Result<(), std::io::Error> {
+    fn repl (&mut self) -> Result<(), Error> {
         loop {
             let event = read()?;
             self.eval_event(&event);
@@ -53,27 +49,11 @@ impl Editor {
                     self.should_exit = true;
                 }
                 Char(' ') => {
-                    self.current_x += 1;
                     execute!(stdout(), crossterm::style::Print(' ')).unwrap();
                     return;
                 }
                 Char(_) => {
-                    self.current_x += 1;
                     execute!(stdout(), crossterm::style::Print(code)).unwrap();
-                }
-                
-                event::KeyCode::BackTab => {
-                    if self.current_x != 0 {
-                        self.current_x -= 1;
-                    }
-                }
-
-                event::KeyCode::Enter => {
-                    Terminal::move_cursor_to(0, self.current_y+1).unwrap();
-                    self.current_y += 1;
-                    Terminal::clear_screen(crossterm::terminal::ClearType::FromCursorDown).unwrap();
-                    // execute!(stdout(), crossterm::style::Print("\n")).unwrap();
-                    return;
                 }
                 _ => (),
             }
@@ -81,23 +61,26 @@ impl Editor {
     }
 
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
+        Terminal::hide_cursor();
         if self.should_exit {
             Terminal::clear_screen(crossterm::terminal::ClearType::All).unwrap();
-            execute!(stdout(), crossterm::style::Print("Goodbye!")).unwrap();
+            Terminal::print("GoodBye!\r\n");
         } else {
-            Terminal::move_cursor_to(0, self.current_y+1).unwrap();
-            Self::print_rows(self.current_y+1).unwrap();
-            Terminal::move_cursor_to(self.current_x, self.current_y).unwrap();
+            Self::print_rows().unwrap();
+            Terminal::move_cursor_to(Position{x:0, y:0})?;
         }
+        Terminal::show_cursor();
+        Terminal::execute()?;
         Ok(())
     }
 
-    pub fn print_rows(start_pos: u16) -> Result<(), Error> {
-        let height = Terminal::size().unwrap().1;
-        for curr in start_pos + 1..height {
-            execute!(stdout(), crossterm::style::Print('~')).unwrap();
-            if (curr + 1) < height {
-                print!("\r\n");
+    pub fn print_rows() -> Result<(), Error> {
+        let Size{height, ..} = Terminal::size()?;
+        for current_row in 0..height {
+            Terminal::clear_screen(crossterm::terminal::ClearType::CurrentLine)?;
+            Terminal::print("~")?;
+            if current_row + 1 < height {
+                Terminal::print("\r\n")?;
             }
         }
         Ok(())

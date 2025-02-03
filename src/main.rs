@@ -7,6 +7,6 @@ mod terminal;
 use terminal::Terminal;
 
 fn main() {
-    print!("\x1b[2J");
+    Terminal::clear_screen(crossterm::terminal::ClearType::All);
     Editor::default().run();
 }
