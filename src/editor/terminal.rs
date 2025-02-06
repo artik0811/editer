@@ -5,16 +5,16 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearT
 use std::fmt::Display;
 use std::io::{stdout, Error, Write};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct  Size {
-    pub height:u16,
-    pub width:u16,
+    pub height:usize,
+    pub width:usize,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Position {
-    pub x:u16,
-    pub y:u16,
+    pub x:usize,
+    pub y:usize,
 }
 
 pub struct Terminal {}
@@ -29,8 +29,12 @@ impl Terminal {
     }
 
     pub fn size () -> Result<Size, Error> {
-        let (width, height) = size()?;
-        Ok(Size { height, width })
+        let (width_u16, height_u16) = size()?;
+        #[allow(clippy::as_conversions)]
+        let height = height_u16 as usize;
+        #[allow(clippy::as_conversions)]
+        let width = width_u16 as usize;
+        Ok(Size {height, width})
     } 
 
     pub fn terminate () -> Result<(), Error> {
@@ -43,7 +47,7 @@ impl Terminal {
     }
 
     pub fn move_cursor_to (pos: Position) -> Result<(), Error> {
-        Self::queue_command(MoveTo(pos.x, pos.y))?;
+        Self::queue_command(MoveTo(pos.x as u16, pos.y as u16))?;
         Ok(())
     }
 
