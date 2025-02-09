@@ -4,7 +4,7 @@ use crossterm::event::{read, Event::Key, KeyCode::Char};
 use crossterm::{cursor, execute};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType};
 use termion::color::Reset;
-use termion::cursor::Up;
+use termion::cursor::{HideCursor, Up};
 use std::cmp::min;
 use std::env;
 use std::io::{self, stdout, Error};
@@ -27,13 +27,19 @@ struct Location {
 #[derive(Default)]
 pub struct Editor {
     should_exit: bool,
-    location: Location
+    location: Location,
+    view_obj: View
 }
 
 impl Editor {
     pub fn run (&mut self) {
         Terminal::clear_screen(ClearType::All).unwrap();
         Terminal::init().unwrap();
+
+        let args: Vec<String> = env::args().collect();
+        let file_path = &args[1];
+        self.view_obj = View::new(file_path).unwrap();
+
         let result = self.repl();
         Terminal::terminate().unwrap();
         result.unwrap();
@@ -74,14 +80,34 @@ impl Editor {
                 //     Terminal::print(' ');
                 //     self.move_caret(KeyCode::Right);
                 // }
-                // Char(_) => {
-                //     Terminal::print(code);
-                //     self.move_caret(KeyCode::Right);
+                KeyCode::Char('s') if *modifiers == KeyModifiers::CONTROL => {
+                    self.view_obj.write_to_file().unwrap();
+                    let Size{height, width} = Terminal::size().unwrap();
+                    Terminal::move_cursor_to(Position {
+                        x: height,
+                        y: width,
+                    }).unwrap();
                     
-                // }
+                    Terminal::print(format!("\x1b[32mFile Saved!\x1b[0m")).unwrap();
+                    Terminal::move_cursor_to(Position {
+                        x: self.location.x,
+                        y: self.location.y,
+                    }).unwrap();
+                }
+                Char(char_code)  => {
+                    self.update_file(*char_code);
+                    self.move_caret(KeyCode::Right);
+                    
+                }
+                
                 _ => (),
             }
         }
+    }
+
+    fn update_file (&mut self, char_code: char) {
+        View::insert_char( &mut self.view_obj, self.location.y, self.location.x, char_code).unwrap();
+        
     }
 
     fn move_caret(&mut self, keycode: KeyCode) {
@@ -114,22 +140,14 @@ impl Editor {
             Terminal::clear_screen(crossterm::terminal::ClearType::Purge).unwrap();
             Terminal::print("GoodBye!\r\n")?;
         } else {
-            let args: Vec<String> = env::args().collect();
-
-            let file_path = &args[1];
             Terminal::move_cursor_to(Position {
                 x: 0,
                 y: 0,
             })?;
-            match View::new(file_path) {
-                Ok(text) =>  {
-                    for line in text.get_text() {
-                        Terminal::print(line);  
-                        Terminal::print("\r\n");                      
-                    }
+                for line in self.view_obj.get_text() {
+                    Terminal::print(line).unwrap();  
+                    Terminal::print("\r\n").unwrap();                      
                 }
-                Err(_) => {}
-            }
             // Self::print_rows().unwrap();
             // Terminal::clear_screen(crossterm::terminal::ClearType::Purge).unwrap();
             Terminal::move_cursor_to(Position {
@@ -137,7 +155,7 @@ impl Editor {
                 y: self.location.y,
             })?;
         }
-        Terminal::show_cursor();
+        Terminal::show_cursor().unwrap();
         Terminal::execute()?;
         Ok(())
     }

@@ -11,13 +11,22 @@ pub struct  Size {
     pub width:usize,
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct Position {
     pub x:usize,
     pub y:usize,
 }
 
 pub struct Terminal {}
+
+impl Position {
+    pub fn default () -> Self {
+        Position {
+            x: 0,
+            y: 0,
+        }
+    }
+}
 
 impl Terminal {
     pub fn init () -> Result<(), Error> {
